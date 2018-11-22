@@ -1,0 +1,13 @@
+cluster_name = "awesome-ecs-cluster-xxx"
+profile = "default"
+vpc_name = "vpcxxx"
+private_subnet_filter = "*Private*"
+public_subnet_filter = "*Public*"
+region = "eu-xxx"
+map_accounts = ["<account id>"]
+app_name = "app"
+app_image = "adongy/hostname-docker:latest"
+app_port = 3000
+app_count = 2
+fargate_cpu = 256
+fargate_memory = 512

@@ -5,14 +5,17 @@ variable "aws_region" {
 
 variable "cluster_name" {
   description = "Name of the EKS cluster"
+  default = "ecs-cluster"
 }
 
 variable "profile" {
   description = "Which profile to use"
+  default = "default"
 }
 
 variable "vpc_name" {
   description = "Name of the VPC"
+  default = "vpc"
 }
 
 variable "public_subnet_filter" {
@@ -46,15 +49,6 @@ data "aws_subnet_ids" "public" {
   tags {
     Name = "${var.public_subnet_filter}"
   }
-}
-
-variable "aws_account_id" {
-  description = "AWS account ID"
-}
-
-variable "az_count" {
-  description = "Number of AZs to cover in a given AWS region"
-  default     = "2"
 }
 
 variable "app_name" {
