@@ -1,6 +1,51 @@
 variable "aws_region" {
   description = "The AWS region to create things in."
-  default     = "us-east-1"
+  default     = "eu-west-1"
+}
+
+variable "cluster_name" {
+  description = "Name of the EKS cluster"
+}
+
+variable "profile" {
+  description = "Which profile to use"
+}
+
+variable "vpc_name" {
+  description = "Name of the VPC"
+}
+
+variable "public_subnet_filter" {
+  description = "Filter for public subnets"
+  default = "*Public*"
+}
+
+variable "private_subnet_filter" {
+  description = "Filter for private subnets"
+  default = "*Private*"
+}
+
+data "aws_vpc" "main" {
+  filter {
+    name   = "tag:Name"
+    values = ["${var.vpc_name}"]
+  }
+}
+
+data "aws_subnet_ids" "private" {
+  vpc_id = "${data.aws_vpc.main.id}"
+
+  tags {
+    Name = "${var.private_subnet_filter}"
+  }
+}
+
+data "aws_subnet_ids" "public" {
+  vpc_id = "${data.aws_vpc.main.id}"
+
+  tags {
+    Name = "${var.public_subnet_filter}"
+  }
 }
 
 variable "aws_account_id" {
@@ -10,6 +55,11 @@ variable "aws_account_id" {
 variable "az_count" {
   description = "Number of AZs to cover in a given AWS region"
   default     = "2"
+}
+
+variable "app_name" {
+  description = "Container name"
+  default     = "app"
 }
 
 variable "app_image" {
