@@ -2,138 +2,17 @@
 
 provider "aws" {
   region     = "${var.aws_region}"
-  profile = "${var.profile}"
+  profile    = "${var.profile}"
 }
-
-### Network
 
 # Fetch AZs in the current region
 data "aws_availability_zones" "available" {}
 
-### Security
-
-# ALB Security group
-# This is the group you need to edit if you want to restrict access to your application
-resource "aws_security_group" "lb" {
-  name        = "${var.cluster_name}-ecs-alb"
-  description = "controls access to the ALB"
-  vpc_id      = "${data.aws_vpc.main.id}"
-
-  ingress {
-    protocol    = "tcp"
-    from_port   = 80
-    to_port     = 80
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port = 0
-    to_port   = 0
-    protocol  = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-# Traffic to the ECS Cluster should only come from the ALB
-resource "aws_security_group" "ecs_tasks" {
-  name        = "${var.cluster_name}-ecs-tasks"
-  description = "allow inbound access from the ALB only"
-  vpc_id      = "${data.aws_vpc.main.id}"
-
-  ingress {
-    protocol        = "tcp"
-    from_port       = "${var.app_port}"
-    to_port         = "${var.app_port}"
-    security_groups = ["${aws_security_group.lb.id}"]
-  }
-
-  egress {
-    protocol    = "-1"
-    from_port   = 0
-    to_port     = 0
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-### ALB
-
-resource "aws_alb" "main" {
-  name            = "${var.cluster_name}-${var.app_name}"
-  subnets         = ["${data.aws_subnet_ids.public.ids}"]
-  security_groups = ["${aws_security_group.lb.id}"]
-}
-
-resource "aws_alb_target_group" "app" {
-  name        = "${var.cluster_name}-${var.app_name}"
-  port        = 80
-  protocol    = "HTTP"
-  vpc_id      = "${data.aws_vpc.main.id}"
-  target_type = "ip"
-}
-
-# Redirect all traffic from the ALB to the target group
-resource "aws_alb_listener" "front_end" {
-  load_balancer_arn = "${aws_alb.main.id}"
-  port              = "80"
-  protocol          = "HTTP"
-
-  default_action {
-    target_group_arn = "${aws_alb_target_group.app.id}"
-    type             = "forward"
-  }
-}
-
-### ECS
-
-resource "aws_ecs_cluster" "main" {
-  name = "${var.cluster_name}"
-}
-
-resource "aws_ecs_task_definition" "app" {
-  family                   = "${var.app_name}"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = "${var.fargate_cpu}"
-  memory                   = "${var.fargate_memory}"
-
-  container_definitions = <<DEFINITION
-[
-  {
-    "cpu": ${var.fargate_cpu},
-    "image": "${var.app_image}",
-    "memory": ${var.fargate_memory},
-    "name": "${var.app_name}",
-    "networkMode": "awsvpc",
-    "portMappings": [
-      {
-        "containerPort": ${var.app_port},
-        "hostPort": ${var.app_port}
-      }
-    ]
-  }
-]
-DEFINITION
-}
-
-resource "aws_ecs_service" "main" {
-  name            = "${var.cluster_name}-ecs-service"
-  cluster         = "${aws_ecs_cluster.main.id}"
-  task_definition = "${aws_ecs_task_definition.app.arn}"
-  desired_count   = "${var.app_count}"
-  launch_type     = "FARGATE"
-
-  network_configuration {
-    security_groups = ["${aws_security_group.ecs_tasks.id}"]
-    subnets         = ["${data.aws_subnet_ids.private.ids}"]
-  }
-
-  load_balancer {
-    target_group_arn = "${aws_alb_target_group.app.id}"
-    container_name   = "${var.app_name}"
-    container_port   = "${var.app_port}"
-  }
-
-  depends_on = [
-    "aws_alb_listener.front_end",
-  ]
+module "fargate" {
+  source                               = "github.com/abnamrocoesd/terraform-aws-fargate"
+  cluster_name                         = "${var.cluster_name}"
+  app_name                             = "${var.app_name}"
+  app_image                            = "${var.app_image}"
+  fargate_cpu                          = "${var.fargate_cpu}"
+  fargate_memory                       = "${var.fargate_memory}"
 }
