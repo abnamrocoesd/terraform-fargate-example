@@ -58,13 +58,13 @@ resource "aws_security_group" "ecs_tasks" {
 ### ALB
 
 resource "aws_alb" "main" {
-  name            = "${var.cluster_name}-ecs-chat"
-  subnets         = ["${data.aws_subnet_ids.public.*.id}"]
+  name            = "${var.cluster_name}-${var.app_name}"
+  subnets         = ["${data.aws_subnet_ids.public.ids}"]
   security_groups = ["${aws_security_group.lb.id}"]
 }
 
 resource "aws_alb_target_group" "app" {
-  name        = "${var.cluster_name}-ecs-chat"
+  name        = "${var.cluster_name}-${var.app_name}"
   port        = 80
   protocol    = "HTTP"
   vpc_id      = "${data.aws_vpc.main.id}"
@@ -124,7 +124,7 @@ resource "aws_ecs_service" "main" {
 
   network_configuration {
     security_groups = ["${aws_security_group.ecs_tasks.id}"]
-    subnets         = ["${data.aws_subnet_ids.private.*.id}"]
+    subnets         = ["${data.aws_subnet_ids.private.ids}"]
   }
 
   load_balancer {
